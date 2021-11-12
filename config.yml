@@ -1,0 +1,4 @@
+routes:
+- name: 'Kowalska'
+  from: 'Kowalska 190, Wrocław'
+  to: 'Kowalska 20, Wrocław'
