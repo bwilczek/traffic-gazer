@@ -5,3 +5,6 @@ routes:
 - name: 'Kowale-Mikołajów'
   from: 'Ełcka 15, Wrocław'
   to: 'Legnicka 48h, Wrocław'
+- name: 'Różanka-Kowale'
+  from: 'Bezpieczna 75, Wrocław'
+  to: 'Ełcka 15, Wrocław'

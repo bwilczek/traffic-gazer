@@ -17,6 +17,8 @@ client = GoogleMaps::Services::GoogleClient.new(key: google_maps_key, response_f
 directions = GoogleMaps::Services::Directions.new(client)
 dbx = DropboxApi::Client.new(dropbox_key)
 
+Result = Struct.new(:duration_value, :duration_text, :distance_value, :distance_text)
+
 def driving_time(directions:, from:, to:)
   result = directions.query(
     origin: from,
@@ -24,7 +26,13 @@ def driving_time(directions:, from:, to:)
     mode: 'driving',
     departure_time: Time.now
   )
-  result[0]['legs'][0]['duration']['value']
+
+  Result.new(
+    result[0]['legs'][0]['duration']['value'],
+    result[0]['legs'][0]['duration']['text'],
+    result[0]['legs'][0]['distance']['value'],
+    result[0]['legs'][0]['distance']['text']
+  )
 end
 
 #############################
@@ -44,7 +52,7 @@ config['routes'].each do |route|
 
   puts "Processing route: #{name} (#{route_index}/#{route_count})"
 
-  duration = driving_time(directions: directions, from: from, to: to)
+  result = driving_time(directions: directions, from: from, to: to)
 
   puts " > remove old local copy"
   FileUtils.rm_f(local_file_name)
@@ -52,10 +60,17 @@ config['routes'].each do |route|
   puts " > pull from dropbox"
   dbx.download(remote_file_name) { |c| File.open(local_file_name, 'w') { |f| f.write(c) } } rescue nil
 
-  puts " > append the new line, duration: #{duration}"
-  File.open(local_file_name, 'a') do |f| 
-    f.puts("#{from};#{to};#{Time.now.iso8601};#{duration}")
-  end 
+  # write header row for new files
+  unless File.exists?(local_file_name)
+    File.open(local_file_name, 'w') do |f|
+      f.puts("from;to;time;#{Result.members.join(";")}")
+    end
+  end
+
+  puts " > append the new line"
+  File.open(local_file_name, 'a') do |f|
+    f.puts("#{from};#{to};#{Time.now.iso8601};#{result.members.map { |m| result.send(m) }.join(';')}")
+  end
 
   puts " > push to dropbox"
   dbx.upload remote_file_name, File.read(local_file_name), :mode => :overwrite
